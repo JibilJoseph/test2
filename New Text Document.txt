@@ -1,61 +1,35 @@
-package com.retail.purchasemanager.constants;
-
-/**
- * Centralized log messages for consistent logging across the application.
- * All messages follow proper grammar and include placeholders for dynamic data.
- * 
- * @author Retail Team
- * @version 1.0
- */
-public final class LogMessages {
+public final class RegexConstants {
     
-    private LogMessages() {
+    private RegexConstants() {
         throw new AssertionError("Cannot instantiate constants class");
     }
     
-    // Controller Layer Messages
-    public static final String CONTROLLER_REQUEST_RECEIVED = "Received request to fetch SKUs below threshold: {}";
-    public static final String CONTROLLER_VALIDATION_STARTED = "Starting validation for threshold value: {}";
-    public static final String CONTROLLER_VALIDATION_FAILED = "Threshold validation failed: {}";
-    public static final String CONTROLLER_SERVICE_CALL_INITIATED = "Calling service layer to fetch SKUs below threshold: {}";
-    public static final String CONTROLLER_SUCCESS_RESPONSE = "Successfully retrieved {} SKUs below threshold: {}";
-    public static final String CONTROLLER_ERROR_RESPONSE = "Error occurred while fetching SKUs below threshold. ErrorCode: {}, Message: {}";
-    public static final String CONTROLLER_EXCEPTION_CAUGHT = "Exception caught in controller: {} - {}";
+    // SKU ID Pattern: 3 uppercase letters followed by 4 digits (e.g., ABC1234)
+    public static final String SKU_ID_REGEX = "^[A-Z]{3}\\d{4}$";
+    public static final Pattern SKU_ID_PATTERN = Pattern.compile(SKU_ID_REGEX);
     
-    // Service Layer Messages
-    public static final String SERVICE_PROCESSING_STARTED = "Service processing started for threshold: {}";
-    public static final String SERVICE_FETCHING_ALL_SKUS = "Fetching all SKUs from CSV reader";
-    public static final String SERVICE_ALL_SKUS_FETCHED = "Successfully fetched {} SKUs from CSV";
-    public static final String SERVICE_FILTERING_SKUS = "Filtering SKUs with quantity below threshold: {}";
-    public static final String SERVICE_SKUS_FILTERED = "Found {} SKUs below threshold out of {} total SKUs";
-    public static final String SERVICE_NO_SKUS_FOUND = "No SKUs found below threshold: {}";
-    public static final String SERVICE_PROCESSING_COMPLETED = "Service processing completed successfully";
-    public static final String SERVICE_ERROR_OCCURRED = "Error occurred in service layer: {}";
+    // SKU Name Pattern: Only alphabets and spaces, 1-100 characters
+    public static final String SKU_NAME_REGEX = "^[a-zA-Z\\s]{1,100}$";
+    public static final Pattern SKU_NAME_PATTERN = Pattern.compile(SKU_NAME_REGEX);
     
-    // CSV Reader Messages
-    public static final String CSV_READING_STARTED = "Started reading CSV file: {}";
-    public static final String CSV_FILE_FOUND = "CSV file found at path: {}";
-    public static final String CSV_FILE_NOT_FOUND = "CSV file not found at path: {}";
-    public static final String CSV_PARSING_ROW = "Parsing row number: {}";
-    public static final String CSV_ROW_PARSED = "Successfully parsed row: {}";
-    public static final String CSV_ROW_VALIDATION_FAILED = "Row validation failed at line {}: {}";
-    public static final String CSV_ROW_SKIPPED = "Skipping invalid row at line {}: {}";
-    public static final String CSV_READING_COMPLETED = "CSV reading completed. Total valid records: {}, Invalid records: {}";
-    public static final String CSV_EMPTY_FILE = "CSV file is empty: {}";
-    public static final String CSV_READ_ERROR = "Error reading CSV file: {}";
+    // Customer ID Pattern: Email (Gmail, Yahoo, Hotmail only)
+    public static final String CUSTOMER_ID_REGEX = 
+        "^[a-zA-Z0-9._-]+@(gmail|yahoo|hotmail)\\.(com|co\\.in)$";
+    public static final Pattern CUSTOMER_ID_PATTERN = Pattern.compile(CUSTOMER_ID_REGEX);
     
-    // Validation Messages
-    public static final String VALIDATION_STARTED = "Starting validation for field: {}";
-    public static final String VALIDATION_SUCCESS = "Validation successful for {}: {}";
-    public static final String VALIDATION_FAILED = "Validation failed for {}: Value={}, Reason={}";
-    public static final String VALIDATION_SKU_ID = "Validating SKU ID: {}";
-    public static final String VALIDATION_SKU_NAME = "Validating SKU Name: {}";
-    public static final String VALIDATION_PRICE = "Validating Price: {}";
-    public static final String VALIDATION_QUANTITY = "Validating Quantity: {}";
+    // Customer Name Pattern: Only alphabets and spaces, max 50 characters
+    public static final String CUSTOMER_NAME_REGEX = "^[a-zA-Z\\s]{1,50}$";
+    public static final Pattern CUSTOMER_NAME_PATTERN = Pattern.compile(CUSTOMER_NAME_REGEX);
     
-    // General Messages
-    public static final String METHOD_ENTRY = "Entering method: {}";
-    public static final String METHOD_EXIT = "Exiting method: {}";
-    public static final String OPERATION_SUCCESSFUL = "Operation completed successfully";
-    public static final String OPERATION_FAILED = "Operation failed: {}";
+    // Phone Number Pattern: +91-XXXXXXXXXX (10 digits with optional dashes/spaces)
+    public static final String PHONE_NUMBER_REGEX = "^\\+91[\\s-]?\\d{10}$";
+    public static final Pattern PHONE_NUMBER_PATTERN = Pattern.compile(PHONE_NUMBER_REGEX);
+    
+    // Price Pattern: Positive decimal number
+    public static final String PRICE_REGEX = "^\\d+(\\.\\d{1,2})?$";
+    public static final Pattern PRICE_PATTERN = Pattern.compile(PRICE_REGEX);
+    
+    // Quantity Pattern: Positive integer
+    public static final String QUANTITY_REGEX = "^[1-9]\\d*$";
+    public static final Pattern QUANTITY_PATTERN = Pattern.compile(QUANTITY_REGEX);
 }
