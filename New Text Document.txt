@@ -1,195 +1,129 @@
-public class CSVReader {
-    
-    private static final Logger logger = LoggerFactory.getLogger(CSVReader.class);
+private static final Logger logger = LoggerFactory.getLogger(SkuService.class);
     private static final ErrorMessageUtil errorMessageUtil = ErrorMessageUtil.getInstance();
+    
+    private final CSVReader csvReader;
     private final SkuValidator skuValidator;
-    private final String csvFolderPath;
-    
-    // CSV file name constants
-    private static final String SKU_CSV_FILE = "Skus.csv";
-    private static final String CSV_DELIMITER = ",";
-    private static final int EXPECTED_SKU_COLUMNS = 4;
-    
-    // CSV Header indices
-    private static final int SKU_ID_INDEX = 0;
-    private static final int SKU_NAME_INDEX = 1;
-    private static final int PRICE_INDEX = 2;
-    private static final int QUANTITY_INDEX = 3;
     
     /**
-     * Constructor with configurable CSV folder path.
+     * Constructor with dependency injection.
      * 
-     * @param csvFolderPath Root folder path for CSV files
+     * @param csvReader CSV reader utility
      */
-    public CSVReader(String csvFolderPath) {
-        this.csvFolderPath = csvFolderPath;
+    public SkuService(CSVReader csvReader) {
+        this.csvReader = csvReader;
         this.skuValidator = new SkuValidator();
-        logger.info("CSVReader initialized with folder path: {}", csvFolderPath);
+        logger.info("SkuService initialized successfully");
     }
     
     /**
-     * Read all SKUs from CSV file.
+     * Get all SKUs with available quantity below the specified threshold.
+     * Results are sorted alphabetically by SKU name.
      * 
-     * @return List of valid Sku objects
-     * @throws CSVFileNotFoundException if file not found
-     * @throws CSVReadException if error reading file
-     * @throws CSVEmptyFileException if file is empty
+     * @param threshold The quantity threshold
+     * @return List of SKUs below threshold, sorted alphabetically
+     * @throws ValidationException if threshold validation fails
+     * @throws CSVFileNotFoundException if CSV file not found
+     * @throws CSVReadException if error reading CSV
+     * @throws CSVEmptyFileException if CSV file is empty
+     * @throws DataNotFoundException if no SKUs found below threshold
      */
-    public List<Sku> getAllSkus() 
-            throws CSVFileNotFoundException, CSVReadException, CSVEmptyFileException {
+    public List<Sku> getSkusBelowThreshold(int threshold) 
+            throws ValidationException, CSVFileNotFoundException, CSVReadException, 
+                   CSVEmptyFileException, DataNotFoundException {
         
-        logger.info(LogMessages.METHOD_ENTRY, "getAllSkus");
+        logger.info(LogMessages.METHOD_ENTRY, "getSkusBelowThreshold");
+        logger.info(LogMessages.SERVICE_PROCESSING_STARTED, threshold);
         
-        Path filePath = Paths.get(csvFolderPath, SKU_CSV_FILE);
-        logger.info(LogMessages.CSV_READING_STARTED, filePath);
-        
-        // Check if file exists
-        if (!Files.exists(filePath)) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.CSV_FILE_NOT_FOUND);
-            logger.error(LogMessages.CSV_FILE_NOT_FOUND, filePath);
-            throw new CSVFileNotFoundException(
-                ErrorCodes.CSV_FILE_NOT_FOUND,
-                errorMessage + ": " + filePath
-            );
-        }
-        
-        logger.debug(LogMessages.CSV_FILE_FOUND, filePath);
-        
-        List<Sku> skuList = new ArrayList<>();
-        int lineNumber = 0;
-        int validRecords = 0;
-        int invalidRecords = 0;
-        
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath.toFile()))) {
+        try {
+            // Step 1: Validate threshold
+            logger.debug("Validating threshold value: {}", threshold);
+            skuValidator.validateThreshold(threshold);
             
-            String line;
-            boolean isHeader = true;
+            // Step 2: Fetch all SKUs from CSV
+            logger.info(LogMessages.SERVICE_FETCHING_ALL_SKUS);
+            List<Sku> allSkus = csvReader.getAllSkus();
+            logger.info(LogMessages.SERVICE_ALL_SKUS_FETCHED, allSkus.size());
             
-            while ((line = reader.readLine()) != null) {
-                lineNumber++;
-                
-                // Skip header row
-                if (isHeader) {
-                    isHeader = false;
-                    logger.debug("Skipping header row: {}", line);
-                    continue;
-                }
-                
-                // Skip empty lines
-                if (line.trim().isEmpty()) {
-                    logger.debug("Skipping empty line at: {}", lineNumber);
-                    continue;
-                }
-                
-                try {
-                    logger.debug(LogMessages.CSV_PARSING_ROW, lineNumber);
-                    Sku sku = parseSkuFromLine(line, lineNumber);
-                    
-                    if (sku != null) {
-                        skuList.add(sku);
-                        validRecords++;
-                        logger.debug(LogMessages.CSV_ROW_PARSED, sku);
-                    }
-                    
-                } catch (ValidationException | IllegalArgumentException e) {
-                    invalidRecords++;
-                    logger.warn(LogMessages.CSV_ROW_VALIDATION_FAILED, lineNumber, e.getMessage());
-                    logger.debug(LogMessages.CSV_ROW_SKIPPED, lineNumber, line);
-                    // Continue processing other rows
-                }
-            }
+            // Step 3: Filter SKUs below threshold
+            logger.info(LogMessages.SERVICE_FILTERING_SKUS, threshold);
+            List<Sku> filteredSkus = filterSkusBelowThreshold(allSkus, threshold);
             
-            logger.info(LogMessages.CSV_READING_COMPLETED, validRecords, invalidRecords);
-            
-            // Check if file was empty (no valid records)
-            if (skuList.isEmpty()) {
-                String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.CSV_EMPTY_FILE);
-                logger.error(LogMessages.CSV_EMPTY_FILE, filePath);
-                throw new CSVEmptyFileException(
-                    ErrorCodes.CSV_EMPTY_FILE,
-                    errorMessage + ": " + filePath
+            // Step 4: Check if any SKUs found
+            if (filteredSkus.isEmpty()) {
+                String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.NO_SKUS_BELOW_THRESHOLD);
+                logger.warn(LogMessages.SERVICE_NO_SKUS_FOUND, threshold);
+                throw new DataNotFoundException(
+                    ErrorCodes.NO_SKUS_BELOW_THRESHOLD,
+                    errorMessage + " Threshold: " + threshold
                 );
             }
             
-            logger.info(LogMessages.METHOD_EXIT, "getAllSkus");
-            return skuList;
+            // Step 5: Sort alphabetically by SKU name
+            logger.debug("Sorting {} SKUs alphabetically by name", filteredSkus.size());
+            Collections.sort(filteredSkus, (s1, s2) -> s1.getSkuName().compareToIgnoreCase(s2.getSkuName()));
             
-        } catch (IOException e) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.CSV_READ_ERROR);
-            logger.error(LogMessages.CSV_READ_ERROR, filePath, e);
-            throw new CSVReadException(
-                ErrorCodes.CSV_READ_ERROR,
-                errorMessage + ": " + e.getMessage(),
-                e
-            );
+            logger.info(LogMessages.SERVICE_SKUS_FILTERED, filteredSkus.size(), allSkus.size());
+            logger.info(LogMessages.SERVICE_PROCESSING_COMPLETED);
+            logger.info(LogMessages.METHOD_EXIT, "getSkusBelowThreshold");
+            
+            return filteredSkus;
+            
+        } catch (ValidationException | CSVFileNotFoundException | CSVReadException | 
+                 CSVEmptyFileException | DataNotFoundException e) {
+            logger.error(LogMessages.SERVICE_ERROR_OCCURRED, e.getMessage());
+            throw e; // Re-throw to controller
+        } catch (Exception e) {
+            logger.error(LogMessages.SERVICE_ERROR_OCCURRED, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error in service layer", e);
         }
     }
     
     /**
-     * Parse a single line from CSV into Sku object.
+     * Filter SKUs with quantity below threshold.
+     * Uses Java 8 streams for efficient filtering.
      * 
-     * @param line CSV line to parse
-     * @param lineNumber Line number for logging
-     * @return Sku object or null if parsing fails
-     * @throws ValidationException if validation fails
+     * @param skus List of all SKUs
+     * @param threshold Quantity threshold
+     * @return Filtered list of SKUs
      */
-    private Sku parseSkuFromLine(String line, int lineNumber) throws ValidationException {
+    private List<Sku> filterSkusBelowThreshold(List<Sku> skus, int threshold) {
+        logger.debug("Filtering from {} SKUs with threshold {}", skus.size(), threshold);
         
-        String[] columns = line.split(CSV_DELIMITER, -1);
+        List<Sku> filtered = skus.stream()
+                .filter(sku -> {
+                    boolean belowThreshold = sku.getAvailableQuantity() < threshold;
+                    if (belowThreshold) {
+                        logger.trace("SKU {} has quantity {} < threshold {}", 
+                                    sku.getSkuId(), sku.getAvailableQuantity(), threshold);
+                    }
+                    return belowThreshold;
+                })
+                .collect(Collectors.toList());
         
-        // Check column count
-        if (columns.length != EXPECTED_SKU_COLUMNS) {
-            logger.warn("Invalid column count at line {}: expected {}, got {}", 
-                       lineNumber, EXPECTED_SKU_COLUMNS, columns.length);
-            return null;
-        }
+        logger.debug("Filtered {} SKUs below threshold", filtered.size());
+        return filtered;
+    }
+    
+    /**
+     * Get all SKUs sorted by price and name.
+     * This method can be used for other reporting purposes.
+     * 
+     * @return List of all SKUs sorted by price, then name
+     * @throws CSVFileNotFoundException if CSV file not found
+     * @throws CSVReadException if error reading CSV
+     * @throws CSVEmptyFileException if CSV file is empty
+     */
+    public List<Sku> getAllSkusSorted() 
+            throws CSVFileNotFoundException, CSVReadException, CSVEmptyFileException {
         
-        // Extract and trim values
-        String skuId = columns[SKU_ID_INDEX].trim();
-        String skuName = columns[SKU_NAME_INDEX].trim();
-        String priceStr = columns[PRICE_INDEX].trim();
-        String quantityStr = columns[QUANTITY_INDEX].trim();
+        logger.info(LogMessages.METHOD_ENTRY, "getAllSkusSorted");
         
-        // Validate fields
-        skuValidator.validateSkuId(skuId);
-        skuValidator.validateSkuName(skuName);
+        List<Sku> allSkus = csvReader.getAllSkus();
+        Collections.sort(allSkus); // Uses Sku's compareTo (price, then name)
         
-        // Parse and validate price
-        BigDecimal price;
-        try {
-            price = new BigDecimal(priceStr);
-            skuValidator.validatePrice(price);
-        } catch (NumberFormatException e) {
-            logger.warn("Invalid price format at line {}: {}", lineNumber, priceStr);
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_PRICE_INVALID,
-                "Invalid price format: " + priceStr,
-                "price",
-                priceStr
-            );
-        }
+        logger.info("Retrieved and sorted {} SKUs", allSkus.size());
+        logger.info(LogMessages.METHOD_EXIT, "getAllSkusSorted");
         
-        // Parse and validate quantity
-        int quantity;
-        try {
-            quantity = Integer.parseInt(quantityStr);
-            skuValidator.validateQuantity(quantity);
-        } catch (NumberFormatException e) {
-            logger.warn("Invalid quantity format at line {}: {}", lineNumber, quantityStr);
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_QUANTITY_INVALID,
-                "Invalid quantity format: " + quantityStr,
-                "quantity",
-                quantityStr
-            );
-        }
-        
-        // Build and return Sku object
-        return new Sku.Builder()
-                .skuId(skuId)
-                .skuName(skuName)
-                .price(price)
-                .availableQuantity(quantity)
-                .build();
+        return allSkus;
     }
 }
