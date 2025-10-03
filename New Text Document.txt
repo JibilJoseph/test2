@@ -1,129 +1,127 @@
-private static final Logger logger = LoggerFactory.getLogger(SkuService.class);
+private static final Logger logger = LoggerFactory.getLogger(PurchaseController.class);
     private static final ErrorMessageUtil errorMessageUtil = ErrorMessageUtil.getInstance();
     
-    private final CSVReader csvReader;
-    private final SkuValidator skuValidator;
+    private final SkuService skuService;
     
     /**
      * Constructor with dependency injection.
      * 
-     * @param csvReader CSV reader utility
+     * @param skuService SKU service instance
      */
-    public SkuService(CSVReader csvReader) {
-        this.csvReader = csvReader;
-        this.skuValidator = new SkuValidator();
-        logger.info("SkuService initialized successfully");
+    public PurchaseController(SkuService skuService) {
+        this.skuService = skuService;
+        logger.info("PurchaseController initialized successfully");
     }
     
     /**
-     * Get all SKUs with available quantity below the specified threshold.
-     * Results are sorted alphabetically by SKU name.
+     * Get all SKUs with available quantity below specified threshold.
      * 
-     * @param threshold The quantity threshold
-     * @return List of SKUs below threshold, sorted alphabetically
-     * @throws ValidationException if threshold validation fails
-     * @throws CSVFileNotFoundException if CSV file not found
-     * @throws CSVReadException if error reading CSV
-     * @throws CSVEmptyFileException if CSV file is empty
-     * @throws DataNotFoundException if no SKUs found below threshold
+     * @param threshold Quantity threshold (must be positive integer)
+     * @return Response object containing list of SKUs or error details
      */
-    public List<Sku> getSkusBelowThreshold(int threshold) 
-            throws ValidationException, CSVFileNotFoundException, CSVReadException, 
-                   CSVEmptyFileException, DataNotFoundException {
+    public Response<List<Sku>> getSkusBelowThreshold(int threshold) {
         
-        logger.info(LogMessages.METHOD_ENTRY, "getSkusBelowThreshold");
-        logger.info(LogMessages.SERVICE_PROCESSING_STARTED, threshold);
+        logger.info("==================== REQUEST START ====================");
+        logger.info(LogMessages.CONTROLLER_REQUEST_RECEIVED, threshold);
         
         try {
-            // Step 1: Validate threshold
-            logger.debug("Validating threshold value: {}", threshold);
-            skuValidator.validateThreshold(threshold);
+            // Step 1: Input validation at controller level
+            logger.debug(LogMessages.CONTROLLER_VALIDATION_STARTED, threshold);
             
-            // Step 2: Fetch all SKUs from CSV
-            logger.info(LogMessages.SERVICE_FETCHING_ALL_SKUS);
-            List<Sku> allSkus = csvReader.getAllSkus();
-            logger.info(LogMessages.SERVICE_ALL_SKUS_FETCHED, allSkus.size());
-            
-            // Step 3: Filter SKUs below threshold
-            logger.info(LogMessages.SERVICE_FILTERING_SKUS, threshold);
-            List<Sku> filteredSkus = filterSkusBelowThreshold(allSkus, threshold);
-            
-            // Step 4: Check if any SKUs found
-            if (filteredSkus.isEmpty()) {
-                String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.NO_SKUS_BELOW_THRESHOLD);
-                logger.warn(LogMessages.SERVICE_NO_SKUS_FOUND, threshold);
-                throw new DataNotFoundException(
-                    ErrorCodes.NO_SKUS_BELOW_THRESHOLD,
-                    errorMessage + " Threshold: " + threshold
+            if (threshold <= 0) {
+                String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_THRESHOLD_INVALID);
+                logger.warn(LogMessages.CONTROLLER_VALIDATION_FAILED, 
+                           "Threshold must be positive: " + threshold);
+                
+                return Response.error(
+                    400, // Bad Request
+                    ErrorCodes.VALIDATION_THRESHOLD_INVALID,
+                    errorMessage
                 );
             }
             
-            // Step 5: Sort alphabetically by SKU name
-            logger.debug("Sorting {} SKUs alphabetically by name", filteredSkus.size());
-            Collections.sort(filteredSkus, (s1, s2) -> s1.getSkuName().compareToIgnoreCase(s2.getSkuName()));
+            // Step 2: Call service layer
+            logger.info(LogMessages.CONTROLLER_SERVICE_CALL_INITIATED, threshold);
+            List<Sku> skus = skuService.getSkusBelowThreshold(threshold);
             
-            logger.info(LogMessages.SERVICE_SKUS_FILTERED, filteredSkus.size(), allSkus.size());
-            logger.info(LogMessages.SERVICE_PROCESSING_COMPLETED);
-            logger.info(LogMessages.METHOD_EXIT, "getSkusBelowThreshold");
+            // Step 3: Build success response
+            logger.info(LogMessages.CONTROLLER_SUCCESS_RESPONSE, skus.size(), threshold);
+            logger.info("==================== REQUEST END (SUCCESS) ====================");
             
-            return filteredSkus;
+            return Response.success(skus);
             
-        } catch (ValidationException | CSVFileNotFoundException | CSVReadException | 
-                 CSVEmptyFileException | DataNotFoundException e) {
-            logger.error(LogMessages.SERVICE_ERROR_OCCURRED, e.getMessage());
-            throw e; // Re-throw to controller
+        } catch (ValidationException e) {
+            // Handle validation errors
+            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
+            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
+            logger.info("==================== REQUEST END (VALIDATION_ERROR) ====================");
+            
+            return Response.error(
+                400, // Bad Request
+                e.getErrorCode(),
+                e.getMessage()
+            );
+            
+        } catch (CSVFileNotFoundException e) {
+            // Handle file not found errors
+            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
+            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
+            logger.info("==================== REQUEST END (FILE_NOT_FOUND) ====================");
+            
+            return Response.error(
+                404, // Not Found
+                e.getErrorCode(),
+                e.getMessage()
+            );
+            
+        } catch (CSVEmptyFileException e) {
+            // Handle empty file errors
+            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
+            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
+            logger.info("==================== REQUEST END (EMPTY_FILE) ====================");
+            
+            return Response.error(
+                404, // Not Found
+                e.getErrorCode(),
+                e.getMessage()
+            );
+            
+        } catch (CSVReadException e) {
+            // Handle CSV reading errors
+            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage(), e);
+            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
+            logger.info("==================== REQUEST END (CSV_READ_ERROR) ====================");
+            
+            return Response.error(
+                500, // Internal Server Error
+                e.getErrorCode(),
+                e.getMessage()
+            );
+            
+        } catch (DataNotFoundException e) {
+            // Handle no data found scenarios
+            logger.warn(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
+            logger.warn(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
+            logger.info("==================== REQUEST END (NO_DATA) ====================");
+            
+            return Response.error(
+                404, // Not Found
+                e.getErrorCode(),
+                e.getMessage()
+            );
+            
         } catch (Exception e) {
-            logger.error(LogMessages.SERVICE_ERROR_OCCURRED, e.getMessage(), e);
-            throw new RuntimeException("Unexpected error in service layer", e);
+            // Handle unexpected errors
+            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage(), e);
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.SYSTEM_UNEXPECTED_ERROR);
+            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, ErrorCodes.SYSTEM_UNEXPECTED_ERROR, errorMessage);
+            logger.info("==================== REQUEST END (UNEXPECTED_ERROR) ====================");
+            
+            return Response.error(
+                500, // Internal Server Error
+                ErrorCodes.SYSTEM_UNEXPECTED_ERROR,
+                errorMessage + ": " + e.getMessage()
+            );
         }
-    }
-    
-    /**
-     * Filter SKUs with quantity below threshold.
-     * Uses Java 8 streams for efficient filtering.
-     * 
-     * @param skus List of all SKUs
-     * @param threshold Quantity threshold
-     * @return Filtered list of SKUs
-     */
-    private List<Sku> filterSkusBelowThreshold(List<Sku> skus, int threshold) {
-        logger.debug("Filtering from {} SKUs with threshold {}", skus.size(), threshold);
-        
-        List<Sku> filtered = skus.stream()
-                .filter(sku -> {
-                    boolean belowThreshold = sku.getAvailableQuantity() < threshold;
-                    if (belowThreshold) {
-                        logger.trace("SKU {} has quantity {} < threshold {}", 
-                                    sku.getSkuId(), sku.getAvailableQuantity(), threshold);
-                    }
-                    return belowThreshold;
-                })
-                .collect(Collectors.toList());
-        
-        logger.debug("Filtered {} SKUs below threshold", filtered.size());
-        return filtered;
-    }
-    
-    /**
-     * Get all SKUs sorted by price and name.
-     * This method can be used for other reporting purposes.
-     * 
-     * @return List of all SKUs sorted by price, then name
-     * @throws CSVFileNotFoundException if CSV file not found
-     * @throws CSVReadException if error reading CSV
-     * @throws CSVEmptyFileException if CSV file is empty
-     */
-    public List<Sku> getAllSkusSorted() 
-            throws CSVFileNotFoundException, CSVReadException, CSVEmptyFileException {
-        
-        logger.info(LogMessages.METHOD_ENTRY, "getAllSkusSorted");
-        
-        List<Sku> allSkus = csvReader.getAllSkus();
-        Collections.sort(allSkus); // Uses Sku's compareTo (price, then name)
-        
-        logger.info("Retrieved and sorted {} SKUs", allSkus.size());
-        logger.info(LogMessages.METHOD_EXIT, "getAllSkusSorted");
-        
-        return allSkus;
     }
 }
