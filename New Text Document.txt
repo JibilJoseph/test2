@@ -1,0 +1,22 @@
+# CSV Related Error Messages
+CSV-NF-001=CSV file not found at the specified path. Please check the file location and try again.
+CSV-RE-002=Error occurred while reading the CSV file. The file might be corrupted or inaccessible.
+CSV-PE-003=Failed to parse CSV data. Please verify the file format and structure.
+CSV-EF-004=CSV file is empty. No data available to process.
+CSV-IH-005=CSV file has invalid or missing headers. Expected headers do not match.
+
+# Validation Error Messages
+VAL-SI-001=Invalid SKU ID format. Expected format: 3 uppercase letters followed by 4 digits (e.g., ABC1234).
+VAL-SN-002=Invalid SKU Name. Name must contain only alphabets and spaces, maximum 100 characters.
+VAL-PR-003=Invalid price value. Price must be a positive decimal number.
+VAL-QT-004=Invalid quantity value. Quantity must be a positive integer.
+VAL-TH-005=Invalid threshold value. Threshold must be a positive integer greater than zero.
+
+# Business Logic Error Messages
+BIZ-SNF-001=No SKU found with the specified criteria.
+BIZ-NST-002=No SKUs found below the specified threshold.
+
+# System Error Messages
+SYS-UE-001=An unexpected error occurred. Please contact system administrator.
+SYS-IO-002=Input/Output error occurred while processing the request.
+SYS-CF-003=System configuration error. Please check application configuration.
