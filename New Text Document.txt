@@ -1,134 +1,88 @@
-package com.retail.purchasemanager.exception;
+package com.retail.purchasemanager.util;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
 /**
- * Base exception class for all custom exceptions in the application.
+ * Utility class to load and retrieve error messages from properties file.
+ * Implements Singleton pattern for efficient resource usage.
+ * 
+ * @author Retail Team
+ * @version 1.0
  */
-public class PurchaseManagerException extends Exception {
+public final class ErrorMessageUtil {
     
-    private final String errorCode;
+    private static final Logger logger = LoggerFactory.getLogger(ErrorMessageUtil.class);
+    private static final String ERROR_PROPERTIES_FILE = "errors.properties";
+    private static ErrorMessageUtil instance;
+    private final Properties errorProperties;
     
-    public PurchaseManagerException(String errorCode, String message) {
-        super(message);
-        this.errorCode = errorCode;
+    private ErrorMessageUtil() {
+        errorProperties = new Properties();
+        loadProperties();
     }
     
-    public PurchaseManagerException(String errorCode, String message, Throwable cause) {
-        super(message, cause);
-        this.errorCode = errorCode;
+    /**
+     * Get singleton instance of ErrorMessageUtil.
+     * Thread-safe implementation.
+     */
+    public static synchronized ErrorMessageUtil getInstance() {
+        if (instance == null) {
+            instance = new ErrorMessageUtil();
+        }
+        return instance;
     }
     
-    public String getErrorCode() {
-        return errorCode;
-    }
-}
-
-// ============================================
-// CSV Related Exceptions
-// ============================================
-
-/**
- * Exception thrown when CSV file is not found.
- */
-class CSVFileNotFoundException extends PurchaseManagerException {
-    
-    public CSVFileNotFoundException(String errorCode, String message) {
-        super(errorCode, message);
-    }
-    
-    public CSVFileNotFoundException(String errorCode, String message, Throwable cause) {
-        super(errorCode, message, cause);
-    }
-}
-
-/**
- * Exception thrown when error occurs while reading CSV.
- */
-class CSVReadException extends PurchaseManagerException {
-    
-    public CSVReadException(String errorCode, String message) {
-        super(errorCode, message);
+    /**
+     * Load error messages from properties file.
+     */
+    private void loadProperties() {
+        try (InputStream input = getClass().getClassLoader()
+                .getResourceAsStream(ERROR_PROPERTIES_FILE)) {
+            
+            if (input == null) {
+                logger.error("Unable to find {}", ERROR_PROPERTIES_FILE);
+                return;
+            }
+            
+            errorProperties.load(input);
+            logger.info("Successfully loaded error messages from {}", ERROR_PROPERTIES_FILE);
+            
+        } catch (IOException e) {
+            logger.error("Error loading error properties file", e);
+        }
     }
     
-    public CSVReadException(String errorCode, String message, Throwable cause) {
-        super(errorCode, message, cause);
-    }
-}
-
-/**
- * Exception thrown when CSV parsing fails.
- */
-class CSVParseException extends PurchaseManagerException {
-    
-    public CSVParseException(String errorCode, String message) {
-        super(errorCode, message);
-    }
-    
-    public CSVParseException(String errorCode, String message, Throwable cause) {
-        super(errorCode, message, cause);
-    }
-}
-
-/**
- * Exception thrown when CSV file is empty.
- */
-class CSVEmptyFileException extends PurchaseManagerException {
-    
-    public CSVEmptyFileException(String errorCode, String message) {
-        super(errorCode, message);
-    }
-}
-
-// ============================================
-// Validation Related Exceptions
-// ============================================
-
-/**
- * Exception thrown when validation fails.
- */
-class ValidationException extends PurchaseManagerException {
-    
-    private final String fieldName;
-    private final String fieldValue;
-    
-    public ValidationException(String errorCode, String message, String fieldName, String fieldValue) {
-        super(errorCode, message);
-        this.fieldName = fieldName;
-        this.fieldValue = fieldValue;
+    /**
+     * Get error message for a given error code.
+     * 
+     * @param errorCode The error code
+     * @return Error message or a default message if not found
+     */
+    public String getErrorMessage(String errorCode) {
+        String message = errorProperties.getProperty(errorCode);
+        
+        if (message == null) {
+            logger.warn("Error message not found for code: {}", errorCode);
+            return "An error occurred. Error code: " + errorCode;
+        }
+        
+        return message;
     }
     
-    public String getFieldName() {
-        return fieldName;
-    }
-    
-    public String getFieldValue() {
-        return fieldValue;
-    }
-}
-
-// ============================================
-// Business Logic Exceptions
-// ============================================
-
-/**
- * Exception thrown when business logic validation fails.
- */
-class BusinessException extends PurchaseManagerException {
-    
-    public BusinessException(String errorCode, String message) {
-        super(errorCode, message);
-    }
-    
-    public BusinessException(String errorCode, String message, Throwable cause) {
-        super(errorCode, message, cause);
-    }
-}
-
-/**
- * Exception thrown when no data found.
- */
-class DataNotFoundException extends PurchaseManagerException {
-    
-    public DataNotFoundException(String errorCode, String message) {
-        super(errorCode, message);
+    /**
+     * Get error message with dynamic parameters.
+     * 
+     * @param errorCode The error code
+     * @param params Dynamic parameters to replace placeholders
+     * @return Formatted error message
+     */
+    public String getErrorMessage(String errorCode, Object... params) {
+        String message = getErrorMessage(errorCode);
+        return String.format(message, params);
     }
 }
