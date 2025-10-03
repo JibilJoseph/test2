@@ -1,88 +1,178 @@
-package com.retail.purchasemanager.util;
+package com.retail.purchasemanager.validator;
 
+import com.retail.purchasemanager.constants.ErrorCodes;
+import com.retail.purchasemanager.constants.LogMessages;
+import com.retail.purchasemanager.constants.RegexConstants;
+import com.retail.purchasemanager.exception.ValidationException;
+import com.retail.purchasemanager.util.ErrorMessageUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
+import java.math.BigDecimal;
 
 /**
- * Utility class to load and retrieve error messages from properties file.
- * Implements Singleton pattern for efficient resource usage.
+ * Validator class for SKU data validation.
+ * All validation methods throw ValidationException on failure.
  * 
  * @author Retail Team
  * @version 1.0
  */
-public final class ErrorMessageUtil {
+public class SkuValidator {
     
-    private static final Logger logger = LoggerFactory.getLogger(ErrorMessageUtil.class);
-    private static final String ERROR_PROPERTIES_FILE = "errors.properties";
-    private static ErrorMessageUtil instance;
-    private final Properties errorProperties;
-    
-    private ErrorMessageUtil() {
-        errorProperties = new Properties();
-        loadProperties();
-    }
+    private static final Logger logger = LoggerFactory.getLogger(SkuValidator.class);
+    private static final ErrorMessageUtil errorMessageUtil = ErrorMessageUtil.getInstance();
     
     /**
-     * Get singleton instance of ErrorMessageUtil.
-     * Thread-safe implementation.
-     */
-    public static synchronized ErrorMessageUtil getInstance() {
-        if (instance == null) {
-            instance = new ErrorMessageUtil();
-        }
-        return instance;
-    }
-    
-    /**
-     * Load error messages from properties file.
-     */
-    private void loadProperties() {
-        try (InputStream input = getClass().getClassLoader()
-                .getResourceAsStream(ERROR_PROPERTIES_FILE)) {
-            
-            if (input == null) {
-                logger.error("Unable to find {}", ERROR_PROPERTIES_FILE);
-                return;
-            }
-            
-            errorProperties.load(input);
-            logger.info("Successfully loaded error messages from {}", ERROR_PROPERTIES_FILE);
-            
-        } catch (IOException e) {
-            logger.error("Error loading error properties file", e);
-        }
-    }
-    
-    /**
-     * Get error message for a given error code.
+     * Validate SKU ID format.
      * 
-     * @param errorCode The error code
-     * @return Error message or a default message if not found
+     * @param skuId The SKU ID to validate
+     * @throws ValidationException if validation fails
      */
-    public String getErrorMessage(String errorCode) {
-        String message = errorProperties.getProperty(errorCode);
+    public void validateSkuId(String skuId) throws ValidationException {
+        logger.debug(LogMessages.VALIDATION_SKU_ID, skuId);
         
-        if (message == null) {
-            logger.warn("Error message not found for code: {}", errorCode);
-            return "An error occurred. Error code: " + errorCode;
+        if (skuId == null || skuId.trim().isEmpty()) {
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_ID_INVALID);
+            logger.warn(LogMessages.VALIDATION_FAILED, "SKU ID", skuId, "null or empty");
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_SKU_ID_INVALID,
+                errorMessage,
+                "skuId",
+                skuId
+            );
         }
         
-        return message;
+        if (!RegexConstants.SKU_ID_PATTERN.matcher(skuId).matches()) {
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_ID_INVALID);
+            logger.warn(LogMessages.VALIDATION_FAILED, "SKU ID", skuId, "pattern mismatch");
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_SKU_ID_INVALID,
+                errorMessage,
+                "skuId",
+                skuId
+            );
+        }
+        
+        logger.debug(LogMessages.VALIDATION_SUCCESS, "SKU ID", skuId);
     }
     
     /**
-     * Get error message with dynamic parameters.
+     * Validate SKU Name format.
      * 
-     * @param errorCode The error code
-     * @param params Dynamic parameters to replace placeholders
-     * @return Formatted error message
+     * @param skuName The SKU name to validate
+     * @throws ValidationException if validation fails
      */
-    public String getErrorMessage(String errorCode, Object... params) {
-        String message = getErrorMessage(errorCode);
-        return String.format(message, params);
+    public void validateSkuName(String skuName) throws ValidationException {
+        logger.debug(LogMessages.VALIDATION_SKU_NAME, skuName);
+        
+        if (skuName == null || skuName.trim().isEmpty()) {
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_NAME_INVALID);
+            logger.warn(LogMessages.VALIDATION_FAILED, "SKU Name", skuName, "null or empty");
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_SKU_NAME_INVALID,
+                errorMessage,
+                "skuName",
+                skuName
+            );
+        }
+        
+        if (!RegexConstants.SKU_NAME_PATTERN.matcher(skuName).matches()) {
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_NAME_INVALID);
+            logger.warn(LogMessages.VALIDATION_FAILED, "SKU Name", skuName, "pattern mismatch");
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_SKU_NAME_INVALID,
+                errorMessage,
+                "skuName",
+                skuName
+            );
+        }
+        
+        logger.debug(LogMessages.VALIDATION_SUCCESS, "SKU Name", skuName);
+    }
+    
+    /**
+     * Validate price value.
+     * 
+     * @param price The price to validate
+     * @throws ValidationException if validation fails
+     */
+    public void validatePrice(BigDecimal price) throws ValidationException {
+        logger.debug(LogMessages.VALIDATION_PRICE, price);
+        
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_PRICE_INVALID);
+            logger.warn(LogMessages.VALIDATION_FAILED, "Price", price, "null or non-positive");
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_PRICE_INVALID,
+                errorMessage,
+                "price",
+                price != null ? price.toString() : "null"
+            );
+        }
+        
+        logger.debug(LogMessages.VALIDATION_SUCCESS, "Price", price);
+    }
+    
+    /**
+     * Validate quantity value.
+     * 
+     * @param quantity The quantity to validate
+     * @throws ValidationException if validation fails
+     */
+    public void validateQuantity(int quantity) throws ValidationException {
+        logger.debug(LogMessages.VALIDATION_QUANTITY, quantity);
+        
+        if (quantity < 0) {
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_QUANTITY_INVALID);
+            logger.warn(LogMessages.VALIDATION_FAILED, "Quantity", quantity, "negative value");
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_QUANTITY_INVALID,
+                errorMessage,
+                "quantity",
+                String.valueOf(quantity)
+            );
+        }
+        
+        logger.debug(LogMessages.VALIDATION_SUCCESS, "Quantity", quantity);
+    }
+    
+    /**
+     * Validate threshold value.
+     * 
+     * @param threshold The threshold to validate
+     * @throws ValidationException if validation fails
+     */
+    public void validateThreshold(int threshold) throws ValidationException {
+        logger.debug(LogMessages.VALIDATION_STARTED, "Threshold");
+        
+        if (threshold <= 0) {
+            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_THRESHOLD_INVALID);
+            logger.warn(LogMessages.VALIDATION_FAILED, "Threshold", threshold, "non-positive value");
+            throw new ValidationException(
+                ErrorCodes.VALIDATION_THRESHOLD_INVALID,
+                errorMessage,
+                "threshold",
+                String.valueOf(threshold)
+            );
+        }
+        
+        logger.debug(LogMessages.VALIDATION_SUCCESS, "Threshold", threshold);
+    }
+    
+    /**
+     * Validate all SKU fields together.
+     * 
+     * @param skuId SKU ID
+     * @param skuName SKU Name
+     * @param price Price
+     * @param quantity Quantity
+     * @throws ValidationException if any validation fails
+     */
+    public void validateSkuData(String skuId, String skuName, BigDecimal price, int quantity) 
+            throws ValidationException {
+        validateSkuId(skuId);
+        validateSkuName(skuName);
+        validatePrice(price);
+        validateQuantity(quantity);
     }
 }
