@@ -1,178 +1,61 @@
-package com.retail.purchasemanager.validator;
-
-import com.retail.purchasemanager.constants.ErrorCodes;
-import com.retail.purchasemanager.constants.LogMessages;
-import com.retail.purchasemanager.constants.RegexConstants;
-import com.retail.purchasemanager.exception.ValidationException;
-import com.retail.purchasemanager.util.ErrorMessageUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.math.BigDecimal;
+package com.retail.purchasemanager.constants;
 
 /**
- * Validator class for SKU data validation.
- * All validation methods throw ValidationException on failure.
+ * Centralized log messages for consistent logging across the application.
+ * All messages follow proper grammar and include placeholders for dynamic data.
  * 
  * @author Retail Team
  * @version 1.0
  */
-public class SkuValidator {
+public final class LogMessages {
     
-    private static final Logger logger = LoggerFactory.getLogger(SkuValidator.class);
-    private static final ErrorMessageUtil errorMessageUtil = ErrorMessageUtil.getInstance();
-    
-    /**
-     * Validate SKU ID format.
-     * 
-     * @param skuId The SKU ID to validate
-     * @throws ValidationException if validation fails
-     */
-    public void validateSkuId(String skuId) throws ValidationException {
-        logger.debug(LogMessages.VALIDATION_SKU_ID, skuId);
-        
-        if (skuId == null || skuId.trim().isEmpty()) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_ID_INVALID);
-            logger.warn(LogMessages.VALIDATION_FAILED, "SKU ID", skuId, "null or empty");
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_SKU_ID_INVALID,
-                errorMessage,
-                "skuId",
-                skuId
-            );
-        }
-        
-        if (!RegexConstants.SKU_ID_PATTERN.matcher(skuId).matches()) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_ID_INVALID);
-            logger.warn(LogMessages.VALIDATION_FAILED, "SKU ID", skuId, "pattern mismatch");
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_SKU_ID_INVALID,
-                errorMessage,
-                "skuId",
-                skuId
-            );
-        }
-        
-        logger.debug(LogMessages.VALIDATION_SUCCESS, "SKU ID", skuId);
+    private LogMessages() {
+        throw new AssertionError("Cannot instantiate constants class");
     }
     
-    /**
-     * Validate SKU Name format.
-     * 
-     * @param skuName The SKU name to validate
-     * @throws ValidationException if validation fails
-     */
-    public void validateSkuName(String skuName) throws ValidationException {
-        logger.debug(LogMessages.VALIDATION_SKU_NAME, skuName);
-        
-        if (skuName == null || skuName.trim().isEmpty()) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_NAME_INVALID);
-            logger.warn(LogMessages.VALIDATION_FAILED, "SKU Name", skuName, "null or empty");
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_SKU_NAME_INVALID,
-                errorMessage,
-                "skuName",
-                skuName
-            );
-        }
-        
-        if (!RegexConstants.SKU_NAME_PATTERN.matcher(skuName).matches()) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_SKU_NAME_INVALID);
-            logger.warn(LogMessages.VALIDATION_FAILED, "SKU Name", skuName, "pattern mismatch");
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_SKU_NAME_INVALID,
-                errorMessage,
-                "skuName",
-                skuName
-            );
-        }
-        
-        logger.debug(LogMessages.VALIDATION_SUCCESS, "SKU Name", skuName);
-    }
+    // Controller Layer Messages
+    public static final String CONTROLLER_REQUEST_RECEIVED = "Received request to fetch SKUs below threshold: {}";
+    public static final String CONTROLLER_VALIDATION_STARTED = "Starting validation for threshold value: {}";
+    public static final String CONTROLLER_VALIDATION_FAILED = "Threshold validation failed: {}";
+    public static final String CONTROLLER_SERVICE_CALL_INITIATED = "Calling service layer to fetch SKUs below threshold: {}";
+    public static final String CONTROLLER_SUCCESS_RESPONSE = "Successfully retrieved {} SKUs below threshold: {}";
+    public static final String CONTROLLER_ERROR_RESPONSE = "Error occurred while fetching SKUs below threshold. ErrorCode: {}, Message: {}";
+    public static final String CONTROLLER_EXCEPTION_CAUGHT = "Exception caught in controller: {} - {}";
     
-    /**
-     * Validate price value.
-     * 
-     * @param price The price to validate
-     * @throws ValidationException if validation fails
-     */
-    public void validatePrice(BigDecimal price) throws ValidationException {
-        logger.debug(LogMessages.VALIDATION_PRICE, price);
-        
-        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_PRICE_INVALID);
-            logger.warn(LogMessages.VALIDATION_FAILED, "Price", price, "null or non-positive");
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_PRICE_INVALID,
-                errorMessage,
-                "price",
-                price != null ? price.toString() : "null"
-            );
-        }
-        
-        logger.debug(LogMessages.VALIDATION_SUCCESS, "Price", price);
-    }
+    // Service Layer Messages
+    public static final String SERVICE_PROCESSING_STARTED = "Service processing started for threshold: {}";
+    public static final String SERVICE_FETCHING_ALL_SKUS = "Fetching all SKUs from CSV reader";
+    public static final String SERVICE_ALL_SKUS_FETCHED = "Successfully fetched {} SKUs from CSV";
+    public static final String SERVICE_FILTERING_SKUS = "Filtering SKUs with quantity below threshold: {}";
+    public static final String SERVICE_SKUS_FILTERED = "Found {} SKUs below threshold out of {} total SKUs";
+    public static final String SERVICE_NO_SKUS_FOUND = "No SKUs found below threshold: {}";
+    public static final String SERVICE_PROCESSING_COMPLETED = "Service processing completed successfully";
+    public static final String SERVICE_ERROR_OCCURRED = "Error occurred in service layer: {}";
     
-    /**
-     * Validate quantity value.
-     * 
-     * @param quantity The quantity to validate
-     * @throws ValidationException if validation fails
-     */
-    public void validateQuantity(int quantity) throws ValidationException {
-        logger.debug(LogMessages.VALIDATION_QUANTITY, quantity);
-        
-        if (quantity < 0) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_QUANTITY_INVALID);
-            logger.warn(LogMessages.VALIDATION_FAILED, "Quantity", quantity, "negative value");
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_QUANTITY_INVALID,
-                errorMessage,
-                "quantity",
-                String.valueOf(quantity)
-            );
-        }
-        
-        logger.debug(LogMessages.VALIDATION_SUCCESS, "Quantity", quantity);
-    }
+    // CSV Reader Messages
+    public static final String CSV_READING_STARTED = "Started reading CSV file: {}";
+    public static final String CSV_FILE_FOUND = "CSV file found at path: {}";
+    public static final String CSV_FILE_NOT_FOUND = "CSV file not found at path: {}";
+    public static final String CSV_PARSING_ROW = "Parsing row number: {}";
+    public static final String CSV_ROW_PARSED = "Successfully parsed row: {}";
+    public static final String CSV_ROW_VALIDATION_FAILED = "Row validation failed at line {}: {}";
+    public static final String CSV_ROW_SKIPPED = "Skipping invalid row at line {}: {}";
+    public static final String CSV_READING_COMPLETED = "CSV reading completed. Total valid records: {}, Invalid records: {}";
+    public static final String CSV_EMPTY_FILE = "CSV file is empty: {}";
+    public static final String CSV_READ_ERROR = "Error reading CSV file: {}";
     
-    /**
-     * Validate threshold value.
-     * 
-     * @param threshold The threshold to validate
-     * @throws ValidationException if validation fails
-     */
-    public void validateThreshold(int threshold) throws ValidationException {
-        logger.debug(LogMessages.VALIDATION_STARTED, "Threshold");
-        
-        if (threshold <= 0) {
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_THRESHOLD_INVALID);
-            logger.warn(LogMessages.VALIDATION_FAILED, "Threshold", threshold, "non-positive value");
-            throw new ValidationException(
-                ErrorCodes.VALIDATION_THRESHOLD_INVALID,
-                errorMessage,
-                "threshold",
-                String.valueOf(threshold)
-            );
-        }
-        
-        logger.debug(LogMessages.VALIDATION_SUCCESS, "Threshold", threshold);
-    }
+    // Validation Messages
+    public static final String VALIDATION_STARTED = "Starting validation for field: {}";
+    public static final String VALIDATION_SUCCESS = "Validation successful for {}: {}";
+    public static final String VALIDATION_FAILED = "Validation failed for {}: Value={}, Reason={}";
+    public static final String VALIDATION_SKU_ID = "Validating SKU ID: {}";
+    public static final String VALIDATION_SKU_NAME = "Validating SKU Name: {}";
+    public static final String VALIDATION_PRICE = "Validating Price: {}";
+    public static final String VALIDATION_QUANTITY = "Validating Quantity: {}";
     
-    /**
-     * Validate all SKU fields together.
-     * 
-     * @param skuId SKU ID
-     * @param skuName SKU Name
-     * @param price Price
-     * @param quantity Quantity
-     * @throws ValidationException if any validation fails
-     */
-    public void validateSkuData(String skuId, String skuName, BigDecimal price, int quantity) 
-            throws ValidationException {
-        validateSkuId(skuId);
-        validateSkuName(skuName);
-        validatePrice(price);
-        validateQuantity(quantity);
-    }
+    // General Messages
+    public static final String METHOD_ENTRY = "Entering method: {}";
+    public static final String METHOD_EXIT = "Exiting method: {}";
+    public static final String OPERATION_SUCCESSFUL = "Operation completed successfully";
+    public static final String OPERATION_FAILED = "Operation failed: {}";
 }
