@@ -1,127 +1,108 @@
-private static final Logger logger = LoggerFactory.getLogger(PurchaseController.class);
-    private static final ErrorMessageUtil errorMessageUtil = ErrorMessageUtil.getInstance();
+public class Response<T> {
     
-    private final SkuService skuService;
+    private int statusCode;
+    private String errorCode;
+    private String errorMessage;
+    private T data;
+    private long timestamp;
     
     /**
-     * Constructor with dependency injection.
-     * 
-     * @param skuService SKU service instance
+     * Private constructor to enforce builder pattern.
      */
-    public PurchaseController(SkuService skuService) {
-        this.skuService = skuService;
-        logger.info("PurchaseController initialized successfully");
+    private Response(Builder<T> builder) {
+        this.statusCode = builder.statusCode;
+        this.errorCode = builder.errorCode;
+        this.errorMessage = builder.errorMessage;
+        this.data = builder.data;
+        this.timestamp = System.currentTimeMillis();
+    }
+    
+    // Getters
+    public int getStatusCode() {
+        return statusCode;
+    }
+    
+    public String getErrorCode() {
+        return errorCode;
+    }
+    
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+    
+    public T getData() {
+        return data;
+    }
+    
+    public long getTimestamp() {
+        return timestamp;
     }
     
     /**
-     * Get all SKUs with available quantity below specified threshold.
-     * 
-     * @param threshold Quantity threshold (must be positive integer)
-     * @return Response object containing list of SKUs or error details
+     * Check if response is successful.
      */
-    public Response<List<Sku>> getSkusBelowThreshold(int threshold) {
+    public boolean isSuccess() {
+        return statusCode >= 200 && statusCode < 300;
+    }
+    
+    /**
+     * Builder class for constructing Response objects.
+     */
+    public static class Builder<T> {
+        private int statusCode;
+        private String errorCode;
+        private String errorMessage;
+        private T data;
         
-        logger.info("==================== REQUEST START ====================");
-        logger.info(LogMessages.CONTROLLER_REQUEST_RECEIVED, threshold);
-        
-        try {
-            // Step 1: Input validation at controller level
-            logger.debug(LogMessages.CONTROLLER_VALIDATION_STARTED, threshold);
-            
-            if (threshold <= 0) {
-                String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.VALIDATION_THRESHOLD_INVALID);
-                logger.warn(LogMessages.CONTROLLER_VALIDATION_FAILED, 
-                           "Threshold must be positive: " + threshold);
-                
-                return Response.error(
-                    400, // Bad Request
-                    ErrorCodes.VALIDATION_THRESHOLD_INVALID,
-                    errorMessage
-                );
-            }
-            
-            // Step 2: Call service layer
-            logger.info(LogMessages.CONTROLLER_SERVICE_CALL_INITIATED, threshold);
-            List<Sku> skus = skuService.getSkusBelowThreshold(threshold);
-            
-            // Step 3: Build success response
-            logger.info(LogMessages.CONTROLLER_SUCCESS_RESPONSE, skus.size(), threshold);
-            logger.info("==================== REQUEST END (SUCCESS) ====================");
-            
-            return Response.success(skus);
-            
-        } catch (ValidationException e) {
-            // Handle validation errors
-            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
-            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
-            logger.info("==================== REQUEST END (VALIDATION_ERROR) ====================");
-            
-            return Response.error(
-                400, // Bad Request
-                e.getErrorCode(),
-                e.getMessage()
-            );
-            
-        } catch (CSVFileNotFoundException e) {
-            // Handle file not found errors
-            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
-            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
-            logger.info("==================== REQUEST END (FILE_NOT_FOUND) ====================");
-            
-            return Response.error(
-                404, // Not Found
-                e.getErrorCode(),
-                e.getMessage()
-            );
-            
-        } catch (CSVEmptyFileException e) {
-            // Handle empty file errors
-            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
-            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
-            logger.info("==================== REQUEST END (EMPTY_FILE) ====================");
-            
-            return Response.error(
-                404, // Not Found
-                e.getErrorCode(),
-                e.getMessage()
-            );
-            
-        } catch (CSVReadException e) {
-            // Handle CSV reading errors
-            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage(), e);
-            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
-            logger.info("==================== REQUEST END (CSV_READ_ERROR) ====================");
-            
-            return Response.error(
-                500, // Internal Server Error
-                e.getErrorCode(),
-                e.getMessage()
-            );
-            
-        } catch (DataNotFoundException e) {
-            // Handle no data found scenarios
-            logger.warn(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage());
-            logger.warn(LogMessages.CONTROLLER_ERROR_RESPONSE, e.getErrorCode(), e.getMessage());
-            logger.info("==================== REQUEST END (NO_DATA) ====================");
-            
-            return Response.error(
-                404, // Not Found
-                e.getErrorCode(),
-                e.getMessage()
-            );
-            
-        } catch (Exception e) {
-            // Handle unexpected errors
-            logger.error(LogMessages.CONTROLLER_EXCEPTION_CAUGHT, e.getClass().getSimpleName(), e.getMessage(), e);
-            String errorMessage = errorMessageUtil.getErrorMessage(ErrorCodes.SYSTEM_UNEXPECTED_ERROR);
-            logger.error(LogMessages.CONTROLLER_ERROR_RESPONSE, ErrorCodes.SYSTEM_UNEXPECTED_ERROR, errorMessage);
-            logger.info("==================== REQUEST END (UNEXPECTED_ERROR) ====================");
-            
-            return Response.error(
-                500, // Internal Server Error
-                ErrorCodes.SYSTEM_UNEXPECTED_ERROR,
-                errorMessage + ": " + e.getMessage()
-            );
+        public Builder<T> statusCode(int statusCode) {
+            this.statusCode = statusCode;
+            return this;
         }
+        
+        public Builder<T> errorCode(String errorCode) {
+            this.errorCode = errorCode;
+            return this;
+        }
+        
+        public Builder<T> errorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+            return this;
+        }
+        
+        public Builder<T> data(T data) {
+            this.data = data;
+            return this;
+        }
+        
+        public Response<T> build() {
+            return new Response<>(this);
+        }
+    }
+    
+    /**
+     * Create a success response.
+     */
+    public static <T> Response<T> success(T data) {
+        return new Builder<T>()
+                .statusCode(200)
+                .data(data)
+                .build();
+    }
+    
+    /**
+     * Create an error response.
+     */
+    public static <T> Response<T> error(int statusCode, String errorCode, String errorMessage) {
+        return new Builder<T>()
+                .statusCode(statusCode)
+                .errorCode(errorCode)
+                .errorMessage(errorMessage)
+                .build();
+    }
+    
+    @Override
+    public String toString() {
+        return String.format("Response{statusCode=%d, errorCode='%s', errorMessage='%s', hasData=%s, timestamp=%d}",
+                statusCode, errorCode, errorMessage, (data != null), timestamp);
     }
 }
