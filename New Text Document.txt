@@ -1,108 +1,20 @@
-public class Response<T> {
-    
-    private int statusCode;
-    private String errorCode;
-    private String errorMessage;
-    private T data;
-    private long timestamp;
-    
-    /**
-     * Private constructor to enforce builder pattern.
-     */
-    private Response(Builder<T> builder) {
-        this.statusCode = builder.statusCode;
-        this.errorCode = builder.errorCode;
-        this.errorMessage = builder.errorMessage;
-        this.data = builder.data;
-        this.timestamp = System.currentTimeMillis();
-    }
-    
-    // Getters
-    public int getStatusCode() {
-        return statusCode;
-    }
-    
-    public String getErrorCode() {
-        return errorCode;
-    }
-    
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-    
-    public T getData() {
-        return data;
-    }
-    
-    public long getTimestamp() {
-        return timestamp;
-    }
-    
-    /**
-     * Check if response is successful.
-     */
-    public boolean isSuccess() {
-        return statusCode >= 200 && statusCode < 300;
-    }
-    
-    /**
-     * Builder class for constructing Response objects.
-     */
-    public static class Builder<T> {
-        private int statusCode;
-        private String errorCode;
-        private String errorMessage;
-        private T data;
-        
-        public Builder<T> statusCode(int statusCode) {
-            this.statusCode = statusCode;
-            return this;
-        }
-        
-        public Builder<T> errorCode(String errorCode) {
-            this.errorCode = errorCode;
-            return this;
-        }
-        
-        public Builder<T> errorMessage(String errorMessage) {
-            this.errorMessage = errorMessage;
-            return this;
-        }
-        
-        public Builder<T> data(T data) {
-            this.data = data;
-            return this;
-        }
-        
-        public Response<T> build() {
-            return new Response<>(this);
-        }
-    }
-    
-    /**
-     * Create a success response.
-     */
-    public static <T> Response<T> success(T data) {
-        return new Builder<T>()
-                .statusCode(200)
-                .data(data)
-                .build();
-    }
-    
-    /**
-     * Create an error response.
-     */
-    public static <T> Response<T> error(int statusCode, String errorCode, String errorMessage) {
-        return new Builder<T>()
-                .statusCode(statusCode)
-                .errorCode(errorCode)
-                .errorMessage(errorMessage)
-                .build();
-    }
-    
-    @Override
-    public String toString() {
-        return String.format("Response{statusCode=%d, errorCode='%s', errorMessage='%s', hasData=%s, timestamp=%d}",
-                statusCode, errorCode, errorMessage, (data != null), timestamp);
-    }
-}
+document.getElementById("orderForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const item = document.getElementById("itemName").value;
+  const qty = document.getElementById("quantity").value;
+
+  try {
+    const response = await fetch("http://localhost:8080/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemName: item, quantity: qty }),
+    });
+
+    const data = await response.text();
+    document.getElementById("responseMessage").textContent = data;
+  } catch (error) {
+    document.getElementById("responseMessage").textContent =
+      "Failed to send order!";
+  }
+});
